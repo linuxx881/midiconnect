@@ -6,6 +6,20 @@ from ctypes import wintypes
 winmm = ctypes.windll.winmm
 
 
+class MIDIHDR(ctypes.Structure):
+    _fields_ = [
+        ("lpData", ctypes.POINTER(ctypes.c_char)),  # Pointer to the message data
+        ("dwBufferLength", wintypes.DWORD),  # Length of the buffer
+        ("dwBytesRecorded", wintypes.DWORD),  # Actual data length
+        ("dwUser", wintypes.DWORD),  # Custom user data (optional)
+        ("dwFlags", wintypes.DWORD),  # Flags (e.g., prepared)
+        ("lpNext", wintypes.HANDLE),  # Reserved for driver use
+        ("reserved", wintypes.DWORD),  # Reserved
+        ("dwOffset", wintypes.DWORD),  # Callback offset
+        ("dwReserved", wintypes.DWORD * 8)  # Reserved
+    ]
+
+
 class MidiConnection(metaclass=abc.ABCMeta):
     def __init__(self, port: int = 0) -> None:
         self._port = port
@@ -59,13 +73,44 @@ class MidiOut(MidiConnection):
         if result != 0:  # MMSYSERR_NOERROR is 0
             raise RuntimeError(f"Failed to open MIDI output port. Error code: {result}")
 
-    def send(self, status: int, data1: int, data2: int) -> None:
+    def short_msg(self, status: int, data1: int, data2: int) -> None:
         if self._handle is None:
             raise RuntimeError("MIDI output is not open.")
         message = (data2 << 16) | (data1 << 8) | status  # Combine into a single 32-bit message
         result = winmm.midiOutShortMsg(self._handle, message)
         if result != 0:
             raise RuntimeError(f"Failed to send MIDI message. Error code: {result}")
+
+    def long_msg(self, data: bytes) -> None:
+        if self._handle is None:
+            raise RuntimeError("MIDI output is not open.")
+
+        if not isinstance(data, bytes):
+            raise TypeError(f"Expected 'data' to be of type 'bytes', but got type '{type(data).__name__}'.")
+
+        buffer = (ctypes.c_char * len(data)).from_buffer_copy(data)
+        midi_hdr = MIDIHDR(
+            lpData=ctypes.cast(buffer, ctypes.POINTER(ctypes.c_char)),
+            dwBufferLength=len(data),
+            dwBytesRecorded=len(data),
+            dwFlags=0
+        )
+
+        # Prepare the header
+        result = winmm.midiOutPrepareHeader(self._handle, ctypes.byref(midi_hdr), ctypes.sizeof(midi_hdr))
+        if result != 0:
+            raise RuntimeError(f"Failed to prepare MIDI header. Error code: {result}")
+
+        try:
+            # Send the long message
+            result = winmm.midiOutLongMsg(self._handle, ctypes.byref(midi_hdr), ctypes.sizeof(midi_hdr))
+            if result != 0:
+                raise RuntimeError(f"Failed to send MIDI long message. Error code: {result}")
+        finally:
+            # Clean up the header
+            result = winmm.midiOutUnprepareHeader(self._handle, ctypes.byref(midi_hdr), ctypes.sizeof(midi_hdr))
+            if result != 0:
+                raise RuntimeError(f"Failed to unprepare MIDI header. Error code: {result}")
 
     def reset(self) -> None:
         if self._handle is None:
