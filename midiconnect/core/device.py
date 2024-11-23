@@ -1,23 +1,10 @@
 import abc
 import ctypes
 from ctypes import wintypes
+from midiconnect.core import structs
 
 # Windows multimedia (winmm) library
 winmm = ctypes.windll.winmm
-
-
-class MIDIHDR(ctypes.Structure):
-    _fields_ = [
-        ("lpData", ctypes.POINTER(ctypes.c_char)),  # Pointer to the message data
-        ("dwBufferLength", wintypes.DWORD),  # Length of the buffer
-        ("dwBytesRecorded", wintypes.DWORD),  # Actual data length
-        ("dwUser", wintypes.DWORD),  # Custom user data (optional)
-        ("dwFlags", wintypes.DWORD),  # Flags (e.g., prepared)
-        ("lpNext", wintypes.HANDLE),  # Reserved for driver use
-        ("reserved", wintypes.DWORD),  # Reserved
-        ("dwOffset", wintypes.DWORD),  # Callback offset
-        ("dwReserved", wintypes.DWORD * 8)  # Reserved
-    ]
 
 
 class MidiConnection(metaclass=abc.ABCMeta):
@@ -89,7 +76,7 @@ class MidiOut(MidiConnection):
             raise TypeError(f"Expected 'data' to be of type 'bytes', but got type '{type(data).__name__}'.")
 
         buffer = (ctypes.c_char * len(data)).from_buffer_copy(data)
-        midi_hdr = MIDIHDR(
+        midi_hdr = structs.MIDIHDR(
             lpData=ctypes.cast(buffer, ctypes.POINTER(ctypes.c_char)),
             dwBufferLength=len(data),
             dwBytesRecorded=len(data),
