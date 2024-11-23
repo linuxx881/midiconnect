@@ -20,40 +20,6 @@ class MIDIHDR(ctypes.Structure):
     ]
 
 
-class MIDIINCAPS(ctypes.Structure):
-    _fields_ = [
-        ("wMid", wintypes.WORD),  # Manufacturer ID
-        ("wPid", wintypes.WORD),  # Product ID
-        ("vDriverVersion", wintypes.DWORD),  # Driver version
-        ("szPname", wintypes.c_char * 32),  # Device name
-        ("dwSupport", wintypes.DWORD)  # Supported features
-    ]
-
-
-class MIDIOUTCAPS(ctypes.Structure):
-    _fields_ = [
-        ("wMid", wintypes.WORD),  # Manufacturer ID
-        ("wPid", wintypes.WORD),  # Product ID
-        ("vDriverVersion", wintypes.DWORD),  # Driver version
-        ("szPname", wintypes.c_char * 32),  # Device name
-        ("dwSupport", wintypes.DWORD)  # Supported features
-    ]
-
-
-class MIDIPROPTIMEDIV(ctypes.Structure):
-    _fields_ = [
-        ("dwProperty", wintypes.DWORD),  # Property ID
-        ("dwSupport", wintypes.DWORD)  # Supported features
-    ]
-
-
-class MIDIPROPTEMPO(ctypes.Structure):
-    _fields_ = [
-        ("dwProperty", wintypes.DWORD),  # Property ID
-        ("dwTempo", wintypes.DWORD)  # Tempo (in microseconds per beat)
-    ]
-
-
 class MidiConnection(metaclass=abc.ABCMeta):
     def __init__(self, port: int = 0) -> None:
         self._port = port
